@@ -30,7 +30,7 @@ export const useMatchDetails = (matchId: number) => {
 
 export const useChampionsLeaguePhase = (phaseId: number) => {
   return useQuery({
-    queryKey: ['champions-league', 'phase', phaseId],
+    queryKey: ['ChampionsLeague', 'phase', phaseId],
     queryFn: () => matchesApi.getChampionsLeaguePhase(phaseId),
     enabled: phaseId > 0,
   });

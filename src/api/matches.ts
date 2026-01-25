@@ -34,14 +34,14 @@ export const matchesApi = {
   // Champions League - Qualificação
   getChampionsLeagueQualification: async (round: number): Promise<Match[]> => {
     const { data } = await api.get(
-      `/matches/champions-league/qualification/${round}`
+      `/matches/ChampionsLeague/qualification/${round}`
     );
     return data;
   },
 
   // Champions League - Playoff
   getChampionsLeaguePlayoff: async (): Promise<Match[]> => {
-    const { data } = await api.get('/matches/champions-league/playoff');
+    const { data } = await api.get('/matches/ChampionsLeague/playoff');
     return data;
   },
 
