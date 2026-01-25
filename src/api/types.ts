@@ -146,3 +146,36 @@ export interface League {
   currentRound?: number;
   totalRounds: number;
 }
+
+export interface Tournament {
+  name: string;
+  id: number;
+}
+
+export interface Promotion {
+  text: string;
+  id: number;
+}
+
+export interface StandingRow {
+  position: number;
+  team: { 
+    id: number; 
+    name: string;
+  };
+  matches: number;
+  wins: number;
+  draws: number;
+  losses: number;
+  scoresFor: number;
+  scoresAgainst: number;
+  points: number;
+  scoreDiffFormatted: string;
+  promotion?: Promotion | null;
+}
+
+export interface StandingsTable {
+  tournament: Tournament;
+  type: string;
+  rows: StandingRow[];
+}

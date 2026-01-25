@@ -1,5 +1,5 @@
 import api from './axios';
-import { Match, MatchDetail } from './types';
+import { Match, MatchDetail, StandingsTable } from './types';
 
 export const matchesApi = {
   // Busca jogos ao vivo
@@ -44,4 +44,11 @@ export const matchesApi = {
     const { data } = await api.get('/matches/champions-league/playoff');
     return data;
   },
+
+  getStandings: async (tournamentName: string): Promise<StandingsTable> => {
+    // Note: O endpoint no backend espera o nome da liga (ex: PremierLeague)
+    const { data } = await api.get(`/matches/tournament/${tournamentName}/standings`);
+    return data;
+  },
+
 };

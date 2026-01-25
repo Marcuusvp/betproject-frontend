@@ -60,13 +60,13 @@ export const LEAGUES: League[] = [
 ];
 
 export const LEAGUE_SLUGS: Record<number, string> = {
-  17: 'premier',
-  8: 'laliga',
-  23: 'seriea',
-  34: 'ligue1',
-  35: 'bundesliga',
-  325: 'brasileirao',
-  7: 'champions-league',
+  17: 'PremierLeague',
+  8: 'LaLiga',
+  23: 'SerieA',
+  34: 'Ligue1',
+  35: 'BundesLiga',
+  325: 'Brasileirao',
+  7: 'ChampionsLeague',
 };
 
 export const MATCH_STATUS = {

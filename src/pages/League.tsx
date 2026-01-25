@@ -1,143 +1,173 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { matchesApi } from '@/api/matches';
+import { Match, StandingsTable as StandingsType } from '@/api/types';
 import Layout from '@/components/layout/Layout';
+import StandingsTable from '@/components/leagues/StandingsTable';
 import LiveMatch from '@/components/matches/LiveMatch';
-import Loading from '@/components/common/Loading';
-import { useLeagueMatches } from '@/hooks/useMatches';
+import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import { LEAGUES, LEAGUE_SLUGS } from '@/utils/constants';
 
 const League = () => {
   const { slug } = useParams<{ slug: string }>();
-  
-  // Encontra a liga pelo slug
-  const leagueId = Object.entries(LEAGUE_SLUGS).find(
-    ([_, s]) => s === slug
-  )?.[0];
-  
-  const league = LEAGUES.find((l) => l.id === Number(leagueId));
-  
-  const [currentRound, setCurrentRound] = useState(1);
-  
-  const { data: matches, isLoading, error } = useLeagueMatches(
-    slug || '',
-    currentRound
-  );
+  const leagueSlug = slug || 'premier-league';
 
-  if (!league) {
-    return (
-      <Layout>
-        <div className="text-center py-12">
-          <h2 className="text-2xl font-bold text-gray-900">Liga não encontrada</h2>
-        </div>
-      </Layout>
-    );
-  }
+  const [standings, setStandings] = useState<StandingsType | null>(null);
+  const [matches, setMatches] = useState<Match[]>([]);
+  const [currentRound, setCurrentRound] = useState<number | null>(null);
+  const [loadingStandings, setLoadingStandings] = useState(true);
+  const [loadingMatches, setLoadingMatches] = useState(false);
+  const [logoError, setLogoError] = useState(false);
 
-  const handlePreviousRound = () => {
-    if (currentRound > 1) {
-      setCurrentRound(currentRound - 1);
-    }
-  };
+  // 🔥 CORRIGIDO: Busca a liga pelo slug usando LEAGUE_SLUGS reverso
+  const currentLeague = LEAGUES.find(league => {
+    const leagueSlugFromId = LEAGUE_SLUGS[league.id];
+    return leagueSlugFromId?.toLowerCase() === leagueSlug.toLowerCase();
+  });
 
-  const handleNextRound = () => {
-    if (currentRound < league.totalRounds) {
-      setCurrentRound(currentRound + 1);
-    }
-  };
+  // Reset logo error quando mudar de liga
+  useEffect(() => {
+    setLogoError(false);
+  }, [leagueSlug]);
+
+  // 1. Busca Tabela + Define Rodada Inicial
+  useEffect(() => {
+    const fetchStandings = async () => {
+      setLoadingStandings(true);
+      try {
+        const data = await matchesApi.getStandings(leagueSlug);
+        setStandings(data);
+
+        // Lógica automática: Pega o maior número de jogos jogados na tabela
+        if (data.rows && data.rows.length > 0) {
+           const maxMatches = Math.max(...data.rows.map(r => r.matches));
+           setCurrentRound(maxMatches > 0 ? maxMatches : 1);
+        } else {
+           setCurrentRound(1);
+        }
+      } catch (error) {
+        console.error("Erro ao carregar tabela:", error);
+        setCurrentRound(1);
+      } finally {
+        setLoadingStandings(false);
+      }
+    };
+
+    fetchStandings();
+  }, [leagueSlug]);
+
+  // 2. Busca Jogos quando a Rodada muda
+  useEffect(() => {
+    if (currentRound === null) return;
+
+    const fetchRound = async () => {
+      setLoadingMatches(true);
+      try {
+        const data = await matchesApi.getByRound(leagueSlug, currentRound);
+        setMatches(data);
+      } catch (error) {
+        console.error("Erro ao carregar rodada:", error);
+        setMatches([]);
+      } finally {
+        setLoadingMatches(false);
+      }
+    };
+
+    fetchRound();
+  }, [leagueSlug, currentRound]);
+
+  const handlePrev = () => setCurrentRound(p => p !== null ? Math.max(1, p - 1) : 1);
+  const handleNext = () => setCurrentRound(p => p !== null ? p + 1 : 1);
 
   return (
     <Layout>
-      {/* League Header */}
-      <section className="mb-8">
+      {/* Header */}
+      <div className="bg-white rounded-xl shadow-sm p-6 mb-6 border border-gray-100 flex items-center gap-4">
+        {/* Logo da Liga */}
         <div
-          className="rounded-xl p-8 text-white"
-          style={{ background: `linear-gradient(135deg, ${league.color} 0%, ${league.color}dd 100%)` }}
+          className="w-16 h-16 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0"
+          style={{ backgroundColor: currentLeague ? `${currentLeague.color}15` : '#f3f4f6' }}
         >
-          <div className="flex items-center space-x-4">
-            <div className="w-20 h-20 bg-white bg-opacity-20 rounded-full flex items-center justify-center text-4xl">
-              {league.logo}
-            </div>
-            <div>
-              <h1 className="text-4xl font-bold">{league.name}</h1>
-              <p className="text-xl opacity-90">{league.country}</p>
-            </div>
-          </div>
+          {currentLeague && !logoError ? (
+            <img
+              src={currentLeague.logo}
+              alt={`${currentLeague.name} logo`}
+              className="w-14 h-14 object-contain"
+              onError={() => setLogoError(true)}
+            />
+          ) : (
+            <span className="text-3xl">⚽</span>
+          )}
         </div>
-      </section>
 
-      {/* Round Navigation */}
-      <section className="mb-6">
-        <div className="card p-4">
-          <div className="flex items-center justify-between">
-            <button
-              onClick={handlePreviousRound}
-              disabled={currentRound === 1}
-              className="flex items-center space-x-2 px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition"
-            >
-              <ChevronLeft size={20} />
-              <span>Rodada Anterior</span>
-            </button>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">
+            {currentLeague?.name || leagueSlug.replace(/-/g, ' ')}
+          </h1>
+          <p className="text-gray-500 text-sm">
+            {currentLeague?.country || 'Temporada 2024/2025'}
+          </p>
+        </div>
+      </div>
 
-            <div className="text-center">
-              <p className="text-sm text-gray-500">Rodada</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {currentRound} de {league.totalRounds}
-              </p>
+      <div className="flex flex-col lg:flex-row gap-6">
+
+        {/* LADO ESQUERDO: Tabela (Desktop: 40%) */}
+        <div className="w-full lg:w-[40%] order-2 lg:order-1">
+           <StandingsTable rows={standings?.rows || []} loading={loadingStandings} />
+        </div>
+
+        {/* LADO DIREITO: Jogos (Desktop: 60%) */}
+        <div className="w-full lg:w-[60%] order-1 lg:order-2">
+
+          {/* Controle de Rodada */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-4 flex justify-between items-center sticky top-[80px] z-10">
+            <h2 className="text-lg font-bold flex items-center gap-2 text-gray-800">
+              <Calendar className="text-primary-600" size={20} />
+              Rodada {currentRound ?? '...'}
+            </h2>
+
+            <div className="flex items-center gap-1 bg-gray-50 rounded-lg p-1">
+              <button 
+                onClick={handlePrev}
+                disabled={loadingMatches || currentRound === null || currentRound === 1}
+                className="p-2 hover:bg-white hover:shadow-sm rounded-md disabled:opacity-30 transition-all"
+              >
+                <ChevronLeft size={20} />
+              </button>
+              <button 
+                onClick={handleNext}
+                disabled={loadingMatches || currentRound === null}
+                className="p-2 hover:bg-white hover:shadow-sm rounded-md disabled:opacity-30 transition-all"
+              >
+                <ChevronRight size={20} />
+              </button>
             </div>
-
-            <button
-              onClick={handleNextRound}
-              disabled={currentRound === league.totalRounds}
-              className="flex items-center space-x-2 px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition"
-            >
-              <span>Próxima Rodada</span>
-              <ChevronRight size={20} />
-            </button>
           </div>
+
+          {/* Lista de Jogos */}
+          {loadingMatches || currentRound === null ? (
+             <div className="grid grid-cols-1 gap-4">
+                {[1,2,3].map(i => (
+                    <div key={i} className="h-32 bg-gray-100 rounded-xl animate-pulse"></div>
+                ))}
+             </div>
+          ) : (
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+              {matches.length > 0 ? (
+                matches.map(match => (
+                  <LiveMatch key={match.id} match={match} />
+                ))
+              ) : (
+                <div className="col-span-2 py-12 text-center bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                    <p className="text-gray-500">Nenhum jogo encontrado nesta rodada.</p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
-      </section>
 
-      {/* Matches */}
-      <section>
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">
-          Partidas da Rodada {currentRound}
-        </h2>
-
-        {isLoading && <Loading text="Carregando partidas..." />}
-
-        {error && (
-          <div className="card p-6 border-l-4 border-red-500">
-            <p className="text-red-600">
-              Erro ao carregar partidas. Tente novamente mais tarde.
-            </p>
-          </div>
-        )}
-
-        {!isLoading && !error && matches && matches.length === 0 && (
-          <div className="card p-8 text-center text-gray-500">
-            <p>Nenhuma partida encontrada para esta rodada</p>
-          </div>
-        )}
-
-        {!isLoading && !error && matches && matches.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {matches.map((match) => (
-              <LiveMatch key={match.id} match={match} />
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* Placeholder para Tabela de Classificação */}
-      <section className="mt-12">
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">
-          Classificação
-        </h2>
-        <div className="card p-8 text-center text-gray-500">
-          <p>Tabela de classificação será implementada em breve</p>
-        </div>
-      </section>
+      </div>
     </Layout>
   );
 };
