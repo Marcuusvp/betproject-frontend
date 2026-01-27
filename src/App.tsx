@@ -2,11 +2,11 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Home from './pages/Home';
 import ChampionsLeague from './pages/ChampionsLeague';
 import League from './pages/League';
+import Statistics from './pages/Statistics';
+import Match from './pages/Match';
 
 // Placeholder pages (você vai criar depois)
-const Match = () => <div>Match Page - Em construção</div>;
 const Live = () => <div>Live Page - Em construção</div>;
-const Statistics = () => <div>Statistics Page - Em construção</div>;
 
 function App() {
   return (
