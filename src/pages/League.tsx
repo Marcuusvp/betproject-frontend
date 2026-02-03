@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { matchesApi } from '@/api/matches';
-import { Match, StandingsTable as StandingsType } from '@/api/types';
+import { Match, StandingRow, StandingsTable as StandingsType } from '@/api/types';
 import Layout from '@/components/layout/Layout';
 import StandingsTable from '@/components/leagues/StandingsTable';
 import LiveMatch from '@/components/matches/LiveMatch';
@@ -12,7 +12,7 @@ const League = () => {
   const { slug } = useParams<{ slug: string }>();
   const leagueSlug = slug || 'premier-league';
 
-  const [standings, setStandings] = useState<StandingsType | null>(null);
+  const [standings, setStandings] = useState<StandingRow[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
   const [currentRound, setCurrentRound] = useState<number | null>(null);
   const [loadingStandings, setLoadingStandings] = useState(true);
@@ -39,8 +39,8 @@ const League = () => {
         setStandings(data);
 
         // Lógica automática: Pega o maior número de jogos jogados na tabela
-        if (data.rows && data.rows.length > 0) {
-           const maxMatches = Math.max(...data.rows.map(r => r.matches));
+        if (data && data.length > 0) {
+           const maxMatches = Math.max(...data.map(r => r.matches));
            setCurrentRound(maxMatches > 0 ? maxMatches : 1);
         } else {
            setCurrentRound(1);
@@ -114,7 +114,7 @@ const League = () => {
 
         {/* LADO ESQUERDO: Tabela (Desktop: 40%) */}
         <div className="w-full lg:w-[40%] order-2 lg:order-1">
-           <StandingsTable rows={standings?.rows || []} loading={loadingStandings} />
+           <StandingsTable rows={standings || []} loading={loadingStandings} />
         </div>
 
         {/* LADO DIREITO: Jogos (Desktop: 60%) */}

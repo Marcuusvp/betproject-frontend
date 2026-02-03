@@ -170,8 +170,8 @@ export interface StandingRow {
   scoresFor: number;
   scoresAgainst: number;
   points: number;
-  scoreDiffFormatted: string;
   promotion?: Promotion | null;
+  updatedAt: string;
 }
 
 export interface StandingsTable {

@@ -4,13 +4,13 @@ import Layout from '@/components/layout/Layout';
 import LiveMatch from '@/components/matches/LiveMatch';
 import StandingsTable from '@/components/leagues/StandingsTable';
 import { matchesApi } from '@/api/matches';
-import { Match, StandingsTable as StandingsType } from '@/api/types';
+import { Match, StandingRow, StandingsTable as StandingsType } from '@/api/types';
 import { LEAGUES } from '@/utils/constants';
 
 const ChampionsLeague = () => {
   const [currentPhase, setCurrentPhase] = useState<number | null>(null);
   const [matches, setMatches] = useState<Match[]>([]);
-  const [standings, setStandings] = useState<StandingsType | null>(null);
+  const [standings, setStandings] = useState<StandingRow[]>([]);
   const [loadingMatches, setLoadingMatches] = useState(false);
   const [loadingStandings, setLoadingStandings] = useState(true);
   const [logoError, setLogoError] = useState(false);
@@ -47,8 +47,8 @@ const ChampionsLeague = () => {
         setStandings(data);
 
         // ✅ Lógica automática: Pega o maior número de jogos jogados na tabela
-        if (data.rows && data.rows.length > 0) {
-          const maxMatches = Math.max(...data.rows.map(r => r.matches));
+        if (data && data.length > 0) {
+          const maxMatches = Math.max(...data.map(r => r.matches));
           // Na Champions, cada rodada = 1 jogo, então a rodada atual é o número de jogos
           setCurrentPhase(maxMatches > 0 ? maxMatches : 1);
         } else {
@@ -179,7 +179,7 @@ const ChampionsLeague = () => {
         {isLeaguePhase && (
           <div className="w-full lg:w-[40%] order-2 lg:order-1">
             <StandingsTable 
-              rows={standings?.rows || []} 
+              rows={standings || []} 
               loading={loadingStandings}
               isChampionsLeague={true}
             />

@@ -1,24 +1,5 @@
+import { StandingRow } from '@/api/types';
 import { useMemo } from 'react';
-
-// 1. Atualização da Interface para incluir 'promotion'
-export interface StandingRow {
-  team: {
-    name: string;
-    id: number;
-  };
-  position: number;
-  matches: number;
-  wins: number;
-  draws: number;
-  losses: number;
-  scoresFor: number;
-  scoresAgainst: number;
-  points: number;
-  promotion?: {
-    text: string;
-    id: number;
-  } | null;
-}
 
 interface StandingsTableProps {
   rows: StandingRow[];
