@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { matchesApi } from '@/api/matches';
-import { Match, StandingRow, StandingsTable as StandingsType } from '@/api/types';
+import { Match, StandingRow } from '@/api/types'; // Removido StandingsType duplicado
 import Layout from '@/components/layout/Layout';
 import StandingsTable from '@/components/leagues/StandingsTable';
 import LiveMatch from '@/components/matches/LiveMatch';
@@ -19,11 +19,14 @@ const League = () => {
   const [loadingMatches, setLoadingMatches] = useState(false);
   const [logoError, setLogoError] = useState(false);
 
-  // 🔥 CORRIGIDO: Busca a liga pelo slug usando LEAGUE_SLUGS reverso
+  // Busca a liga pelo slug
   const currentLeague = LEAGUES.find(league => {
     const leagueSlugFromId = LEAGUE_SLUGS[league.id];
     return leagueSlugFromId?.toLowerCase() === leagueSlug.toLowerCase();
   });
+
+  // Define o total de rodadas (padrão 38 se não encontrar)
+  const totalRounds = currentLeague?.totalRounds || 38;
 
   // Reset logo error quando mudar de liga
   useEffect(() => {
@@ -41,7 +44,9 @@ const League = () => {
         // Lógica automática: Pega o maior número de jogos jogados na tabela
         if (data && data.length > 0) {
            const maxMatches = Math.max(...data.map(r => r.matches));
-           setCurrentRound(maxMatches > 0 ? maxMatches : 1);
+           // Garante que não ultrapasse o total de rodadas
+           const calculatedRound = maxMatches > 0 ? maxMatches : 1;
+           setCurrentRound(Math.min(calculatedRound, totalRounds));
         } else {
            setCurrentRound(1);
         }
@@ -54,7 +59,7 @@ const League = () => {
     };
 
     fetchStandings();
-  }, [leagueSlug]);
+  }, [leagueSlug, totalRounds]);
 
   // 2. Busca Jogos quando a Rodada muda
   useEffect(() => {
@@ -76,14 +81,14 @@ const League = () => {
     fetchRound();
   }, [leagueSlug, currentRound]);
 
+  // ✅ CORREÇÃO: Limites de navegação baseados no totalRounds
   const handlePrev = () => setCurrentRound(p => p !== null ? Math.max(1, p - 1) : 1);
-  const handleNext = () => setCurrentRound(p => p !== null ? p + 1 : 1);
+  const handleNext = () => setCurrentRound(p => p !== null ? Math.min(totalRounds, p + 1) : 1);
 
   return (
     <Layout>
       {/* Header */}
       <div className="bg-white rounded-xl shadow-sm p-6 mb-6 border border-gray-100 flex items-center gap-4">
-        {/* Logo da Liga */}
         <div
           className="w-16 h-16 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0"
           style={{ backgroundColor: currentLeague ? `${currentLeague.color}15` : '#f3f4f6' }}
@@ -105,7 +110,7 @@ const League = () => {
             {currentLeague?.name || leagueSlug.replace(/-/g, ' ')}
           </h1>
           <p className="text-gray-500 text-sm">
-            {currentLeague?.country || 'Temporada 2024/2025'}
+            {currentLeague?.country || 'Temporada 2024/2025'} • {totalRounds} Rodadas
           </p>
         </div>
       </div>
@@ -124,7 +129,7 @@ const League = () => {
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-4 flex justify-between items-center sticky top-[80px] z-10">
             <h2 className="text-lg font-bold flex items-center gap-2 text-gray-800">
               <Calendar className="text-primary-600" size={20} />
-              Rodada {currentRound ?? '...'}
+              Rodada {currentRound ?? '...'} <span className="text-gray-400 text-sm font-normal">/ {totalRounds}</span>
             </h2>
 
             <div className="flex items-center gap-1 bg-gray-50 rounded-lg p-1">
@@ -137,7 +142,8 @@ const League = () => {
               </button>
               <button 
                 onClick={handleNext}
-                disabled={loadingMatches || currentRound === null}
+                // ✅ CORREÇÃO: Desabilita se for a última rodada
+                disabled={loadingMatches || currentRound === null || currentRound >= totalRounds}
                 className="p-2 hover:bg-white hover:shadow-sm rounded-md disabled:opacity-30 transition-all"
               >
                 <ChevronRight size={20} />

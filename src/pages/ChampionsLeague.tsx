@@ -1,11 +1,19 @@
 import { useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar, Trophy } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import LiveMatch from '@/components/matches/LiveMatch';
 import StandingsTable from '@/components/leagues/StandingsTable';
 import { matchesApi } from '@/api/matches';
-import { Match, StandingRow, StandingsTable as StandingsType } from '@/api/types';
+import { Match, StandingRow } from '@/api/types';
 import { LEAGUES } from '@/utils/constants';
+
+// ✅ Mapeamento das fases da UI (9-13) para os IDs reais do SofaScore (TournamentsInfo.cs)
+const KNOCKOUT_ROUND_IDS: Record<number, number> = {
+  10: 5,  // Oitavas (Round of 16)
+  11: 27, // Quartas (Quarterfinals)
+  12: 28, // Semifinais (Semifinals)
+  13: 29  // Final (Final)
+};
 
 const ChampionsLeague = () => {
   const [currentPhase, setCurrentPhase] = useState<number | null>(null);
@@ -15,10 +23,8 @@ const ChampionsLeague = () => {
   const [loadingStandings, setLoadingStandings] = useState(true);
   const [logoError, setLogoError] = useState(false);
 
-  // Busca a liga da Champions
   const championsLeague = LEAGUES.find(league => league.id === 7);
 
-  // Definição das fases
   const phases = [
     { id: 1, name: 'Rodada 1', type: 'league' },
     { id: 2, name: 'Rodada 2', type: 'league' },
@@ -29,16 +35,16 @@ const ChampionsLeague = () => {
     { id: 7, name: 'Rodada 7', type: 'league' },
     { id: 8, name: 'Rodada 8', type: 'league' },
     { id: 9, name: 'Playoffs', type: 'knockout' },
-    { id: 10, name: 'Oitavas', type: 'knockout' },
-    { id: 11, name: 'Quartas', type: 'knockout' },
-    { id: 12, name: 'Semi-Final', type: 'knockout' },
+    { id: 10, name: 'Oitavas de Final', type: 'knockout' },
+    { id: 11, name: 'Quartas de Final', type: 'knockout' },
+    { id: 12, name: 'Semifinal', type: 'knockout' },
     { id: 13, name: 'Final', type: 'knockout' },
   ];
 
   const currentPhaseInfo = currentPhase !== null ? phases.find(p => p.id === currentPhase) : null;
   const isLeaguePhase = currentPhaseInfo?.type === 'league';
 
-  // 1. Busca Tabela + Define Rodada Inicial (igual à página de ligas)
+  // 1. Busca Tabela + Define Rodada Inicial
   useEffect(() => {
     const fetchStandings = async () => {
       setLoadingStandings(true);
@@ -46,11 +52,10 @@ const ChampionsLeague = () => {
         const data = await matchesApi.getStandings('ChampionsLeague');
         setStandings(data);
 
-        // ✅ Lógica automática: Pega o maior número de jogos jogados na tabela
         if (data && data.length > 0) {
           const maxMatches = Math.max(...data.map(r => r.matches));
-          // Na Champions, cada rodada = 1 jogo, então a rodada atual é o número de jogos
-          setCurrentPhase(maxMatches > 0 ? maxMatches : 1);
+          // Define a fase atual com base nos jogos, mas limita a 1 (inicio) se nada jogado
+          setCurrentPhase(maxMatches > 0 ? Math.min(maxMatches + 1, 13) : 1);
         } else {
           setCurrentPhase(1);
         }
@@ -65,14 +70,34 @@ const ChampionsLeague = () => {
     fetchStandings();
   }, []);
 
-  // 2. Busca Jogos quando a Fase muda (igual à página de ligas)
+  // 2. Busca Jogos com Lógica Condicional de Fase
   useEffect(() => {
     if (currentPhase === null) return;
 
     const fetchMatches = async () => {
       setLoadingMatches(true);
+      setMatches([]); // Limpa jogos anteriores enquanto carrega
+      
       try {
-        const data = await matchesApi.getChampionsLeaguePhase(currentPhase);
+        let data: Match[] = [];
+
+        if (currentPhase <= 8) {
+          // Fase de Liga: IDs 1-8 correspondem diretamente aos Rounds 1-8
+          data = await matchesApi.getChampionsLeaguePhase(currentPhase);
+        } 
+        else if (currentPhase === 9) {
+          // Playoffs: Usa endpoint específico (Round 636)
+          data = await matchesApi.getChampionsLeaguePlayoff();
+        } 
+        else {
+          // Mata-Mata: Traduz o ID da UI (10-13) para o ID real (5, 27, 28, 29)
+          const realRoundId = KNOCKOUT_ROUND_IDS[currentPhase];
+          if (realRoundId) {
+            // Reutiliza o endpoint de fase genérica que aceita ID de round
+            data = await matchesApi.getChampionsLeaguePhase(realRoundId);
+          }
+        }
+        
         setMatches(data);
       } catch (error) {
         console.error("Erro ao carregar partidas:", error);
@@ -97,7 +122,6 @@ const ChampionsLeague = () => {
     <Layout>
       {/* Header */}
       <div className="bg-white rounded-xl shadow-sm p-6 mb-6 border border-gray-100 flex items-center gap-4">
-        {/* Logo da Champions League */}
         <div
           className="w-16 h-16 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0"
           style={{ backgroundColor: championsLeague ? `${championsLeague.color}15` : '#00366e15' }}
@@ -122,7 +146,7 @@ const ChampionsLeague = () => {
         </div>
       </div>
 
-      {/* Phase Selector */}
+      {/* Seletor de Fase */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6">
         <div className="flex items-center justify-between mb-4">
           <button
@@ -135,8 +159,8 @@ const ChampionsLeague = () => {
           </button>
 
           <div className="text-center">
-            <p className="text-sm text-gray-500">
-              {isLeaguePhase ? 'Fase de Liga' : 'Fase Eliminatória'}
+            <p className="text-sm text-gray-500 uppercase tracking-wider font-semibold">
+              {isLeaguePhase ? 'Fase de Liga' : 'Mata-Mata'}
             </p>
             <p className="text-2xl font-bold text-gray-900">
               {currentPhaseInfo?.name || '...'}
@@ -153,18 +177,18 @@ const ChampionsLeague = () => {
           </button>
         </div>
 
-        {/* Phase Navigation Dots */}
-        <div className="flex justify-center space-x-2">
+        {/* Dots de Navegação */}
+        <div className="flex justify-center space-x-1 sm:space-x-2 overflow-x-auto py-2">
           {phases.map((phase) => (
             <button
               key={phase.id}
               onClick={() => setCurrentPhase(phase.id)}
-              className={`w-2 h-2 rounded-full transition-all ${
+              className={`h-2 rounded-full transition-all flex-shrink-0 ${
                 phase.id === currentPhase
                   ? 'bg-primary-600 w-8'
-                  : phase.id <= 8
-                  ? 'bg-blue-300 hover:bg-blue-400'
-                  : 'bg-red-300 hover:bg-red-400'
+                  : phase.type === 'league'
+                  ? 'bg-blue-200 hover:bg-blue-300 w-2'
+                  : 'bg-red-200 hover:bg-red-300 w-2'
               }`}
               title={phase.name}
             />
@@ -172,10 +196,10 @@ const ChampionsLeague = () => {
         </div>
       </div>
 
-      {/* Layout: Tabela (esquerda) + Jogos (direita) */}
+      {/* Conteúdo Principal */}
       <div className="flex flex-col lg:flex-row gap-6">
         
-        {/* LADO ESQUERDO: Tabela (Desktop: 40%) - Apenas na Fase de Liga */}
+        {/* LADO ESQUERDO: Tabela (Apenas Fase de Liga) */}
         {isLeaguePhase && (
           <div className="w-full lg:w-[40%] order-2 lg:order-1">
             <StandingsTable 
@@ -186,17 +210,16 @@ const ChampionsLeague = () => {
           </div>
         )}
 
-        {/* LADO DIREITO: Jogos (Desktop: 60% ou 100% se knockout) */}
-        <div className={`w-full ${isLeaguePhase ? 'lg:w-[60%]' : ''} order-1 lg:order-2`}>
+        {/* LADO DIREITO (ou FULL): Jogos */}
+        <div className={`w-full ${isLeaguePhase ? 'lg:w-[60%]' : 'w-full'} order-1 lg:order-2`}>
           
-          {/* Cabeçalho das Partidas */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-4 flex justify-between items-center sticky top-[80px] z-10">
+          {/* Cabeçalho da Lista de Jogos */}
+          <div className={`bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-4 flex justify-between items-center sticky top-[80px] z-10 ${!isLeaguePhase ? 'bg-gradient-to-r from-gray-50 to-white' : ''}`}>
             <h2 className="text-lg font-bold flex items-center gap-2 text-gray-800">
-              <Calendar className="text-primary-600" size={20} />
-              {currentPhaseInfo?.name || '...'}
+              {isLeaguePhase ? <Calendar className="text-primary-600" size={20} /> : <Trophy className="text-amber-500" size={20} />}
+              Jogos - {currentPhaseInfo?.name}
             </h2>
 
-            {/* Controles de navegação */}
             <div className="flex items-center gap-1 bg-gray-50 rounded-lg p-1">
               <button 
                 onClick={handlePreviousPhase}
@@ -217,14 +240,16 @@ const ChampionsLeague = () => {
 
           {/* Lista de Jogos */}
           {loadingMatches || currentPhase === null ? (
-            <div className="grid grid-cols-1 gap-4">
-              {[1,2,3].map(i => (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
+              {[1,2,3,4].map(i => (
                 <div key={i} className="h-32 bg-gray-100 rounded-xl animate-pulse"></div>
               ))}
             </div>
           ) : matches.length === 0 ? (
-            <div className="py-12 text-center bg-gray-50 rounded-xl border border-dashed border-gray-200">
-              <p className="text-gray-500">Nenhuma partida encontrada para esta fase</p>
+            <div className="py-16 text-center bg-gray-50 rounded-xl border border-dashed border-gray-200">
+              <Trophy className="mx-auto text-gray-300 mb-2" size={48} />
+              <p className="text-gray-500 font-medium">Os confrontos desta fase ainda não foram definidos.</p>
+              <p className="text-gray-400 text-sm mt-1">Aguarde o sorteio ou o término da fase anterior.</p>
             </div>
           ) : (
             <div className={`grid grid-cols-1 ${isLeaguePhase ? 'xl:grid-cols-2' : 'md:grid-cols-2 lg:grid-cols-3'} gap-4`}>
@@ -235,27 +260,6 @@ const ChampionsLeague = () => {
           )}
         </div>
       </div>
-
-      {/* Info Card */}
-      <section className="mt-8">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <h3 className="font-bold text-lg mb-3">ℹ️ Sobre o Novo Formato</h3>
-          <div className="space-y-2 text-sm text-gray-600">
-            <p>
-              <strong>Fase de Liga (Rodadas 1-8):</strong> 36 times jogam 8 partidas cada.
-              Os 8 primeiros vão direto às oitavas. Do 9º ao 24º jogam playoffs.
-            </p>
-            <p>
-              <strong>Fase Eliminatória:</strong> Jogos de ida e volta até a final,
-              que é em jogo único.
-            </p>
-            <p>
-              <strong>Critérios de Desempate:</strong> 1) Pontos, 2) Saldo de gols, 
-              3) Gols marcados, 4) Vitórias, 5) Confronto direto.
-            </p>
-          </div>
-        </div>
-      </section>
     </Layout>
   );
 };
