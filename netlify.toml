@@ -4,8 +4,9 @@
 
 [[redirects]]
   from = "/api/*"
-  to = "https://sofascrapper.onrender.com/:splat"
+  to = "https://sofascrapper.onrender.com/api/:splat"
   status = 200
+  force = true
 
 [[redirects]]
   from = "/*"
