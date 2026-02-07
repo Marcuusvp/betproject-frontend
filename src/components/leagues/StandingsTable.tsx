@@ -75,10 +75,10 @@ const StandingsTable = ({ rows, loading, isChampionsLeague = false }: StandingsT
     });
 
     // Opcional: Ordenar por ID ou lógica específica para a legenda ficar bonita (Liberta primeiro, Rebaixamento por último)
-    return promos.sort((a, b) => {
-       // Coloca Rebaixamento (id 3) sempre no final visualmente se quiser, 
+    return promos.sort(() => {
+       // Coloca Rebaixamento (id 3) sempre no final visualmente se quiser,
        // mas a ordem natural da tabela geralmente já resolve.
-       return 0; 
+       return 0;
     });
   }, [rows, isChampionsLeague]);
 

@@ -18,7 +18,7 @@ export default defineConfig({
     port: 3000,
     proxy: {
       '/api': {
-        target: 'http://localhost:5135/', // Porta da sua API .NET
+        target: 'https://sofascrapper.onrender.com/', // Porta da sua API .NET
         changeOrigin: true,
       },
     },

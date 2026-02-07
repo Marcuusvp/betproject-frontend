@@ -4,16 +4,8 @@ import Layout from '@/components/layout/Layout';
 import LiveMatch from '@/components/matches/LiveMatch';
 import StandingsTable from '@/components/leagues/StandingsTable';
 import { matchesApi } from '@/api/matches';
-import { Match, StandingRow } from '@/api/types';
+import { Match, NormalizedMatchesResult, StandingRow } from '@/api/types';
 import { LEAGUES } from '@/utils/constants';
-
-// ✅ Mapeamento das fases da UI (9-13) para os IDs reais do SofaScore (TournamentsInfo.cs)
-const KNOCKOUT_ROUND_IDS: Record<number, number> = {
-  10: 5,  // Oitavas (Round of 16)
-  11: 27, // Quartas (Quarterfinals)
-  12: 28, // Semifinais (Semifinals)
-  13: 29  // Final (Final)
-};
 
 const ChampionsLeague = () => {
   const [currentPhase, setCurrentPhase] = useState<number | null>(null);
@@ -40,6 +32,13 @@ const ChampionsLeague = () => {
     { id: 12, name: 'Semifinal', type: 'knockout' },
     { id: 13, name: 'Final', type: 'knockout' },
   ];
+  const PHASE_TO_ROUND_ID: Record<number, { id: number, slug: string, name: string }> = {
+  9:  { id: 636, slug: 'playoff-round', name: 'Playoffs' },
+  10: { id: 5,   slug: 'round-of-16', name: 'Oitavas de Final' },
+  11: { id: 27,  slug: 'quarterfinals', name: 'Quartas de Final' },
+  12: { id: 28,  slug: 'semifinals',    name: 'Semifinal' },
+  13: { id: 29,  slug: 'final',         name: 'Final' }
+};
 
   const currentPhaseInfo = currentPhase !== null ? phases.find(p => p.id === currentPhase) : null;
   const isLeaguePhase = currentPhaseInfo?.type === 'league';
@@ -76,29 +75,32 @@ const ChampionsLeague = () => {
 
     const fetchMatches = async () => {
       setLoadingMatches(true);
-      setMatches([]); // Limpa jogos anteriores enquanto carrega
+      setMatches([]); 
       
       try {
-        let data: Match[] = [];
+        // Variável tipada corretamente com a estrutura normalizada
+        let result: NormalizedMatchesResult = { matches: [] };
 
         if (currentPhase <= 8) {
-          // Fase de Liga: IDs 1-8 correspondem diretamente aos Rounds 1-8
-          data = await matchesApi.getChampionsLeaguePhase(currentPhase);
-        } 
-        else if (currentPhase === 9) {
-          // Playoffs: Usa endpoint específico (Round 636)
-          data = await matchesApi.getChampionsLeaguePlayoff();
-        } 
-        else {
-          // Mata-Mata: Traduz o ID da UI (10-13) para o ID real (5, 27, 28, 29)
-          const realRoundId = KNOCKOUT_ROUND_IDS[currentPhase];
-          if (realRoundId) {
-            // Reutiliza o endpoint de fase genérica que aceita ID de round
-            data = await matchesApi.getChampionsLeaguePhase(realRoundId);
+          // Fase de Liga: retorna Match[] puro. Normalizamos aqui manualmente.
+          const data = await matchesApi.getChampionsLeaguePhase(currentPhase);
+          result = { matches: data }; // Normalização simples
+        } else {
+          // Fase Mata-Mata: O service já retorna normalizado
+          const knockoutInfo = PHASE_TO_ROUND_ID[currentPhase];
+          if (knockoutInfo) {
+            result = await matchesApi.getChampionsLeagueKnockout(knockoutInfo.id);
           }
         }
         
-        setMatches(data);
+        // Agora 'result' é previsível e tipado. Sem 'any', sem surpresas.
+        setMatches(result.matches);
+        
+        if (result.message) {
+          console.info("Status da fase:", result.message);
+          // Aqui você poderia setar um estado de aviso na UI se quisesse
+        }
+
       } catch (error) {
         console.error("Erro ao carregar partidas:", error);
         setMatches([]);

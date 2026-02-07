@@ -179,3 +179,18 @@ export interface StandingsTable {
   type: string;
   rows: StandingRow[];
 }
+export interface MatchesResponseWithInfo {
+  message: string;
+  tournament: string;
+  round?: number;
+  matches: Match[];
+}
+
+// Union Type: A API pode retornar Array OU Envelope
+export type ApiMatchesResponse = Match[] | MatchesResponseWithInfo;
+
+// Tipo Normalizado: O que o componente vai receber (limpo e padronizado)
+export interface NormalizedMatchesResult {
+  matches: Match[];
+  message?: string;
+}

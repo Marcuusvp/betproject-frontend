@@ -1,5 +1,5 @@
 import api from './axios';
-import { Match, MatchDetail, StandingRow, StandingsTable } from './types';
+import { ApiMatchesResponse, Match, MatchDetail, NormalizedMatchesResult, StandingRow } from './types';
 
 export const matchesApi = {
   // Busca jogos ao vivo
@@ -39,10 +39,20 @@ export const matchesApi = {
     return data;
   },
 
-  // Champions League - Playoff
-  getChampionsLeaguePlayoff: async (): Promise<Match[]> => {
-    const { data } = await api.get('/matches/ChampionsLeague/playoff');
-    return data;
+  getChampionsLeagueKnockout: async (roundId: number): Promise<NormalizedMatchesResult> => {
+    // 1. Tipamos o GET com o Union Type (Array | Envelope)
+    const { data } = await api.get<ApiMatchesResponse>(`/matches/champions-league/playoff/${roundId}`);
+
+    // 2. Type Guard: Verificamos se é um Array
+    if (Array.isArray(data)) {
+      return { matches: data };
+    }
+
+    // 3. Se não for array, o TypeScript infere que é MatchesResponseWithInfo
+    return { 
+      matches: data.matches, 
+      message: data.message 
+    };
   },
 
   getStandings: async (tournamentName: string): Promise<StandingRow[]> => {

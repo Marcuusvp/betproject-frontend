@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
-import { TrendingUp, TrendingDown, Award, Target, Calendar, Clock, BarChart3, Activity } from 'lucide-react';
+import { TrendingUp, Award, Target, BarChart3, Activity } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import Loading from '@/components/common/Loading';
 import { useMatchDetails } from '@/hooks/useMatches';
 import { useLiveMatches } from '@/hooks/useMatches';
-import { Match } from '@/api/types';
 
 const Statistics = () => {
   const [selectedMatchId, setSelectedMatchId] = useState<number | null>(null);
@@ -296,9 +295,9 @@ const DetailedStatistics = ({ match, details, isLoading }: any) => {
     return acc;
   }, {} as Record<string, any[]>);
 
-  // Organiza incidentes por tipo
-  const goals = incidents.filter((i: any) => i.incidentType === 'goal');
-  const cards = incidents.filter((i: any) => i.incidentType === 'card');
+  // Organiza incidentes por tipo (usado em futuras implementações)
+  void incidents.filter((i: any) => i.incidentType === 'goal');
+  void incidents.filter((i: any) => i.incidentType === 'card');
 
   return (
     <div className="space-y-6">
